@@ -36,20 +36,69 @@ import com.vaadin.server.UICreateEvent;
 import com.vaadin.server.VaadinRequest;
 import com.vaadin.ui.UI;
 import com.vaadin.util.CurrentInstance;
+import java.util.HashSet;
 
 public class CDIUIProvider extends DefaultUIProvider implements Serializable {
 
     @Override
     public UI createInstance(UICreateEvent uiCreateEvent) {
+        
+        if(isMobile(uiCreateEvent.getRequest())) {
+            return createMobileUI(uiCreateEvent);
+        } else {
+            return createDesktopUI(uiCreateEvent);
+        }
+    }
+    
+    private boolean isMobile(VaadinRequest request) {
+        String userAgent = request.getHeader("user-agent").toLowerCase();
+        if(userAgent.contains("mobile")) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    
+    private UI createDesktopUI(UICreateEvent uiCreateEvent) {
         Class<? extends UI> type = uiCreateEvent.getUIClass();
         int uiId = uiCreateEvent.getUiId();
         VaadinRequest request = uiCreateEvent.getRequest();
+        
         Bean<?> bean = scanForBeans(type);
         String uiMapping = "";
         if (bean == null) {
             if (type.isAnnotationPresent(CDIUI.class)) {
                 uiMapping = parseUIMapping(request);
-                bean = getUIBeanWithMapping(uiMapping);
+                bean = getUIBeanWithMapping(uiMapping,false);
+            } else {
+                throw new IllegalStateException("UI class: " + type.getName()
+                        + " with mapping: " + uiMapping
+                        + " is not annotated with CDIUI!");
+            }
+        }
+        UIBean uiBean = new UIBean(bean, uiId);
+        try {
+            // Make the UIBean available to UIScopedContext when creating nested
+            // injected objects
+            CurrentInstance.set(UIBean.class, uiBean);
+            return (UI) getBeanManager().getReference(uiBean, type,
+                    getBeanManager().createCreationalContext(bean));
+        } finally {
+            CurrentInstance.set(UIBean.class, null);
+        }
+    }
+    
+    private UI createMobileUI(UICreateEvent uiCreateEvent) {
+        Class<? extends UI> type = uiCreateEvent.getUIClass();
+        int uiId = uiCreateEvent.getUiId();
+        VaadinRequest request = uiCreateEvent.getRequest();
+        
+        Bean<?> bean = scanForBeans(type);
+        String uiMapping = "";
+        if (bean == null) {
+            if (type.isAnnotationPresent(MobileCDIUI.class)) {
+                uiMapping = parseUIMapping(request);
+                bean = getUIBeanWithMapping(uiMapping,true);
             } else {
                 throw new IllegalStateException("UI class: " + type.getName()
                         + " with mapping: " + uiMapping
@@ -73,9 +122,10 @@ public class CDIUIProvider extends DefaultUIProvider implements Serializable {
         VaadinRequest request = selectionEvent.getRequest();
         String uiMapping = parseUIMapping(request);
         if (isRoot(request)) {
-            return rootUI();
+            return rootUI(isMobile(request));
         }
-        Bean<?> uiBean = getUIBeanWithMapping(uiMapping);
+        
+        Bean<?> uiBean = getUIBeanWithMapping(uiMapping,isMobile(request));
 
         if (uiBean != null) {
             return uiBean.getBeanClass().asSubclass(UI.class);
@@ -100,9 +150,15 @@ public class CDIUIProvider extends DefaultUIProvider implements Serializable {
         return pathInfo.equals("/");
     }
 
-    Class<? extends UI> rootUI() {
-        Set<Bean<?>> rootBeans = AnnotationUtil
-                .getRootUiBeans(getBeanManager());
+    private Class<? extends UI> rootUI(boolean mobile) {
+        Set<Bean<?>> rootBeans = new HashSet<Bean<?>>();
+        if (mobile) {
+            rootBeans = AnnotationUtil.getMobileRootUiBeans(getBeanManager());
+        }
+        else {
+            rootBeans = AnnotationUtil.getRootUiBeans(getBeanManager());
+        }
+        
         if (rootBeans.isEmpty()) {
             return null;
         }
@@ -120,8 +176,8 @@ public class CDIUIProvider extends DefaultUIProvider implements Serializable {
         Class<?> rootUI = uiBean.getBeanClass();
         return rootUI.asSubclass(UI.class);
     }
-
-    private Bean<?> getUIBeanWithMapping(String mapping) {
+    
+    private Bean<?> getUIBeanWithMapping(String mapping,boolean mobile) {
         Set<Bean<?>> beans = AnnotationUtil.getUiBeans(getBeanManager());
 
         for (Bean<?> bean : beans) {
@@ -130,9 +186,14 @@ public class CDIUIProvider extends DefaultUIProvider implements Serializable {
                 Class<? extends UI> beanClass = bean.getBeanClass().asSubclass(
                         UI.class);
 
-                if (beanClass.isAnnotationPresent(CDIUI.class)) {
+                if (beanClass.isAnnotationPresent(CDIUI.class) && !mobile) {
                     String computedMapping = Conventions
                             .deriveMappingForUI(beanClass);
+                    if (mapping.equals(computedMapping)) {
+                        return bean;
+                    }
+                } else if (beanClass.isAnnotationPresent(MobileCDIUI.class)) {
+                    String computedMapping = Conventions.deriveMappingForUI(beanClass);
                     if (mapping.equals(computedMapping)) {
                         return bean;
                     }
@@ -142,6 +203,7 @@ public class CDIUIProvider extends DefaultUIProvider implements Serializable {
 
         return null;
     }
+    
 
     private Bean<?> scanForBeans(Class<? extends UI> type) {
 
@@ -164,11 +226,11 @@ public class CDIUIProvider extends DefaultUIProvider implements Serializable {
         return beans.iterator().next();
     }
 
-    String parseUIMapping(VaadinRequest request) {
+    private String parseUIMapping(VaadinRequest request) {
         return parseUIMapping(request.getPathInfo());
     }
 
-    String parseUIMapping(String requestPath) {
+    public String parseUIMapping(String requestPath) {
         if (requestPath != null && requestPath.length() > 1) {
             String path = requestPath;
             if (requestPath.endsWith("/")) {

@@ -31,6 +31,7 @@ import javax.servlet.annotation.WebListener;
 
 import com.vaadin.cdi.CDIUI;
 import com.vaadin.cdi.CDIUIProvider;
+import com.vaadin.cdi.MobileCDIUI;
 import com.vaadin.cdi.URLMapping;
 import com.vaadin.server.VaadinServlet;
 import com.vaadin.ui.UI;
@@ -40,15 +41,17 @@ public class ContextDeployer implements ServletContextListener {
 
     @Inject
     private BeanManager beanManager;
-
+    //Desktop UIs
     private Set<String> configuredUIs;
-
+    //Mobile UIs
+    private Set<String> configuredMobileUIs;
+    
     private String urlMapping = "/*";
 
     @Override
     public void contextInitialized(ServletContextEvent sce) {
         configuredUIs = new HashSet<String>();
-
+        configuredMobileUIs = new HashSet<String>();
         ServletContext context = sce.getServletContext();
 
         getLogger()
@@ -122,8 +125,28 @@ public class ContextDeployer implements ServletContextListener {
                                     + ")");
                 }
             }
-
             configuredUIs.add(uiMapping);
+        }
+        
+        for (Bean<?> uiBean : dropBeansWithOutMobileUIAnnotation(uiBeans)) {
+            Class<? extends UI> uiBeanClass = uiBean.getBeanClass().asSubclass(UI.class);
+
+            String uiMapping = Conventions.deriveMappingForUI(uiBeanClass);
+
+            if (configuredMobileUIs.contains(uiMapping)) {
+                if ("".equals(uiMapping)) {
+                    throw new InconsistentDeploymentException(
+                            InconsistentDeploymentException.ID.MULTIPLE_ROOTS,
+                            "Multiple UIs configured with @MobileCDIUI annotation without context path, "
+                                    + "only one UI can be root");
+                } else {
+                    throw new InconsistentDeploymentException(
+                            InconsistentDeploymentException.ID.PATH_COLLISION,
+                            "Multiple UIs configured with @MobileCDIUI(" + uiMapping
+                                    + ")");
+                }
+            }
+            configuredMobileUIs.add(uiMapping);
         }
 
         int numberOfRootUIs = getNumberOfRootUIs();
@@ -138,6 +161,20 @@ public class ContextDeployer implements ServletContextListener {
 
         getLogger().info(
                 "Available Vaadin UIs for CDI deployment " + configuredUIs);
+        
+        int numberOfMobileRootUIs = getNumberOfMobileRootUIs();
+        
+        if (numberOfMobileRootUIs == 1) {
+            getLogger()
+                    .info("Vaadin UI "
+                            + getRootClassName()
+                            + " is marked as @MobileUI without context path, "
+                            + "this UI is accessible from context root of deployment");
+        }
+
+        getLogger().info(
+                "Available Mobile Vaadin UIs for CDI deployment " + configuredMobileUIs);
+        
     }
 
     /**
@@ -146,6 +183,16 @@ public class ContextDeployer implements ServletContextListener {
      */
     private int getNumberOfRootUIs() {
         Set<Bean<?>> beans = AnnotationUtil.getRootUiBeans(beanManager);
+
+        return beans.size();
+    }
+    
+    /**
+     * @return number of UI beans annotated with {@link CDIUI} annotation
+     *         without context path
+     */
+    private int getNumberOfMobileRootUIs() {
+        Set<Bean<?>> beans = AnnotationUtil.getMobileRootUiBeans(beanManager);
 
         return beans.size();
     }
@@ -195,6 +242,33 @@ public class ContextDeployer implements ServletContextListener {
             } else {
                 getLogger().warning(
                         "UI without CDIUI annotation found: "
+                                + beanClass.getName()
+                                + ", it is not available in CDI deployment");
+            }
+        }
+
+        return result;
+    }
+    
+    
+    /**
+     * From the given set of beans, removes all without @CDIUI annotation
+     * 
+     * @param uiBeans
+     * @return set of beans having @CDIUI annotation
+     */
+    Set<Bean<?>> dropBeansWithOutMobileUIAnnotation(Set<Bean<?>> uiBeans) {
+        Set<Bean<?>> result = new HashSet<Bean<?>>();
+
+        for (Bean<?> bean : uiBeans) {
+            Class<?> beanClass = bean.getBeanClass();
+
+            if (beanClass.isAnnotationPresent(MobileCDIUI.class)) {
+                
+                result.add(bean);
+            } else {
+                getLogger().warning(
+                        "UI without MobileUI annotation found: "
                                 + beanClass.getName()
                                 + ", it is not available in CDI deployment");
             }

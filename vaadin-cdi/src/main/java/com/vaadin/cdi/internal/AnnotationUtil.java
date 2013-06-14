@@ -24,6 +24,7 @@ import javax.enterprise.inject.spi.BeanManager;
 import javax.enterprise.util.AnnotationLiteral;
 
 import com.vaadin.cdi.CDIUI;
+import com.vaadin.cdi.MobileCDIUI;
 import com.vaadin.cdi.URLMapping;
 import com.vaadin.ui.UI;
 
@@ -61,6 +62,26 @@ public class AnnotationUtil {
         }
         return rootBeans;
     }
+    
+    public static Set<Bean<?>> getMobileRootUiBeans(BeanManager beanManager) {
+        Set<Bean<?>> uiBeans = getUiBeans(beanManager);
+        Set<Bean<?>> rootBeans = new HashSet<Bean<?>>();
+        for (Bean<?> bean : uiBeans) {
+            Class<?> beanClass = bean.getBeanClass();
+            // uiBeans may also contain UIs without the @CDIUI annotation -
+            // ignore those
+            MobileCDIUI uiAnnotation = beanClass.getAnnotation(MobileCDIUI.class);
+            if (uiAnnotation == null) {
+                continue;
+            }
+
+            String path = uiAnnotation.value();
+            if (null == path || path.isEmpty()) {
+                rootBeans.add(bean);
+            }
+        }
+        return rootBeans;
+    }
 
     /**
      * List all UI beans (whether or not they have the {@link CDIUI} annotation.
@@ -76,5 +97,6 @@ public class AnnotationUtil {
                 });
         return uiBeans;
     }
+    
 
 }

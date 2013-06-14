@@ -18,6 +18,7 @@ package com.vaadin.cdi.internal;
 
 import com.vaadin.cdi.CDIUI;
 import com.vaadin.cdi.CDIView;
+import com.vaadin.cdi.MobileCDIUI;
 
 public class Conventions {
 
@@ -35,19 +36,28 @@ public class Conventions {
     }
 
     public static String deriveMappingForUI(Class<?> beanClass) {
-        if (beanClass.isAnnotationPresent(CDIUI.class)) {
-            CDIUI annotation = beanClass.getAnnotation(CDIUI.class);
-            String mapping = annotation.value();
+        if (beanClass.isAnnotationPresent(CDIUI.class) 
+                || beanClass.isAnnotationPresent(MobileCDIUI.class)) {
+            String mapping = null;
+            if (beanClass.isAnnotationPresent(MobileCDIUI.class)) {
+                MobileCDIUI annotation = beanClass.getAnnotation(MobileCDIUI.class);
+                mapping = annotation.value();
+            }
+            else {
+               CDIUI annotation = beanClass.getAnnotation(CDIUI.class);
+               mapping = annotation.value();   
+            }
+            
             if (mapping != null && !mapping.isEmpty()) {
                 return mapping;
             } else {
-                // context root by default
                 return "";
             }
         } else {
             return null;
         }
     }
+    
 
     public static String deriveMappingForView(Class<?> clazz) {
         CDIView annotation = clazz.getAnnotation(CDIView.class);

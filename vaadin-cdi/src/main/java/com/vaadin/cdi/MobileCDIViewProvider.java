@@ -37,7 +37,7 @@ import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewProvider;
 import com.vaadin.ui.UI;
 
-public class CDIViewProvider implements ViewProvider {
+public class MobileCDIViewProvider implements ViewProvider {
 
     @Inject
     private BeanManager beanManager;
@@ -118,7 +118,7 @@ public class CDIViewProvider implements ViewProvider {
         }
         for (Bean<?> bean : all) {
             Class<?> beanClass = bean.getBeanClass();
-            CDIView viewAnnotation = beanClass.getAnnotation(CDIView.class);
+            MobileCDIView viewAnnotation = beanClass.getAnnotation(MobileCDIView.class);
             if (viewAnnotation == null) {
                 continue;
             }
@@ -167,16 +167,13 @@ public class CDIViewProvider implements ViewProvider {
         Set<Bean<?>> viewBeans = new HashSet<Bean<?>>();
 
         for (Bean<?> bean : beans) {
-            CDIView viewAnnotation = bean.getBeanClass().getAnnotation(
-                    CDIView.class);
+            MobileCDIView viewAnnotation = bean.getBeanClass().getAnnotation(MobileCDIView.class);
 
             if (viewAnnotation == null) {
                 continue;
             }
 
-            List<Class<? extends UI>> uiClasses = Arrays.asList(viewAnnotation
-                    .uis());
-
+            List<Class<? extends UI>> uiClasses = Arrays.asList(viewAnnotation.uis());
             if (uiClasses.contains(UI.class)
                     || uiClasses.contains(UI.getCurrent().getClass())) {
                 
@@ -250,6 +247,6 @@ public class CDIViewProvider implements ViewProvider {
     }
 
     private static Logger LOG() {
-        return Logger.getLogger(CDIViewProvider.class.getCanonicalName());
+        return Logger.getLogger(MobileCDIViewProvider.class.getCanonicalName());
     }
 }
