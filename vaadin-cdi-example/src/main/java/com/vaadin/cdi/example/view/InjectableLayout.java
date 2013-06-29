@@ -35,7 +35,7 @@ public class InjectableLayout extends VerticalLayout {
     private void initLayout() {
         addComponent(new Label("Injected layout " + layoutCounter.next()));
 
-        label.setValue("Injected label in an injected layout");
+        label.setValue("Injected some label that is now here. And more tester");
         addComponent(label);
     }
 }

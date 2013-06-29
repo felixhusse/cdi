@@ -44,15 +44,19 @@ public class CDIUIProvider extends DefaultUIProvider implements Serializable {
     public UI createInstance(UICreateEvent uiCreateEvent) {
         
         if(isMobile(uiCreateEvent.getRequest())) {
+            getLogger().warning("Loading mobile UI");
             return createMobileUI(uiCreateEvent);
         } else {
+            getLogger().warning("Loading desktop UI");
             return createDesktopUI(uiCreateEvent);
         }
     }
     
     private boolean isMobile(VaadinRequest request) {
         String userAgent = request.getHeader("user-agent").toLowerCase();
-        if(userAgent.contains("mobile")) {
+        String mobileParam = request.getParameter("mobile");
+        
+        if(userAgent.contains("mobile") || userAgent.contains("android") || mobileParam != null) {
             return true;
         } else {
             return false;

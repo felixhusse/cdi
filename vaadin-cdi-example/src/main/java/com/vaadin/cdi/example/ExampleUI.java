@@ -4,6 +4,8 @@ import javax.inject.Inject;
 
 import com.vaadin.cdi.CDIUI;
 import com.vaadin.cdi.CDIViewProvider;
+import com.vaadin.cdi.example.common.LayoutFooter;
+import com.vaadin.cdi.example.common.LayoutHeader;
 import com.vaadin.cdi.example.util.CounterService;
 import com.vaadin.navigator.Navigator;
 import com.vaadin.server.VaadinRequest;
@@ -18,18 +20,36 @@ public class ExampleUI extends UI {
 
     @Inject
     private CounterService counter;
-
+    
+    @Inject
+    private LayoutHeader layoutHeader;
+    
+    @Inject
+    private LayoutFooter layoutFooter;
+    
     @Override
     public void init(VaadinRequest request) {
         setSizeFull();
-
+        
         VerticalLayout navigatorLayout = new VerticalLayout();
         navigatorLayout.setSizeFull();
-
+        navigatorLayout.setSpacing(true);
+        
         Navigator navigator = new Navigator(ExampleUI.this, navigatorLayout);
         navigator.addProvider(viewProvider);
-
-        setContent(navigatorLayout);
+        
+        VerticalLayout baseLayout = new VerticalLayout();
+        baseLayout.addComponent(layoutHeader);
+        baseLayout.addComponent(navigatorLayout);
+        baseLayout.addComponent(layoutFooter);
+        
+        baseLayout.setExpandRatio(navigatorLayout, 1.0f);
+        
+        setContent(baseLayout);
+    }
+    
+    public void setBreadCrumb() {
+        
     }
 
 }

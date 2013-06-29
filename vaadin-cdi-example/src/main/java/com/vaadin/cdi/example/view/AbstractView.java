@@ -51,9 +51,9 @@ public abstract class AbstractView extends CustomComponent implements View {
         VerticalLayout mainLayout = new VerticalLayout();
         mainLayout.setSizeFull();
 
-        Component navigationBar = buildNavigationBar();
-        mainLayout.addComponent(navigationBar);
-        mainLayout.setExpandRatio(navigationBar, 0);
+        //Component navigationBar = buildNavigationBar();
+        //mainLayout.addComponent(navigationBar);
+        //mainLayout.setExpandRatio(navigationBar, 0);
 
         Component content = buildContent();
         mainLayout.addComponent(content);
@@ -69,12 +69,9 @@ public abstract class AbstractView extends CustomComponent implements View {
         navBar.setSizeUndefined();
 
         navBar.addComponent(new NavigationButton("Root view", null));
-        navBar.addComponent(new NavigationButton("Complex view",
-                ComplexView.VIEW_ID));
-        navBar.addComponent(new NavigationButton("Event log view",
-                EventLogView.VIEW_ID));
-        navBar.addComponent(new NavigationButton("Admin view",
-                AdminView.VIEW_ID));
+        navBar.addComponent(new NavigationButton("Complex view",ComplexView.VIEW_ID));
+        navBar.addComponent(new NavigationButton("Event log view",EventLogView.VIEW_ID));
+        navBar.addComponent(new NavigationButton("Admin view", AdminView.VIEW_ID));
 
         return navBar;
     }
