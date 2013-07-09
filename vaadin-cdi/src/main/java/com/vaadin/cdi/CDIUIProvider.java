@@ -43,7 +43,7 @@ public class CDIUIProvider extends DefaultUIProvider implements Serializable {
     @Override
     public UI createInstance(UICreateEvent uiCreateEvent) {
         
-        if(isMobile(uiCreateEvent.getRequest())) {
+        if(isMobile(uiCreateEvent.getRequest()) && hasMobileUI(uiCreateEvent)) {
             getLogger().warning("Loading mobile UI");
             return createMobileUI(uiCreateEvent);
         } else {
@@ -61,6 +61,17 @@ public class CDIUIProvider extends DefaultUIProvider implements Serializable {
         } else {
             return false;
         }
+    }
+    
+    private boolean hasMobileUI(UICreateEvent uiCreateEvent) {
+        Class<? extends UI> type = uiCreateEvent.getUIClass();
+        Bean<?> bean = scanForBeans(type);
+        if (bean == null) {
+            if (type.isAnnotationPresent(MobileCDIUI.class)) {
+                return true;
+            }
+        }
+        return false;
     }
     
     private UI createDesktopUI(UICreateEvent uiCreateEvent) {
